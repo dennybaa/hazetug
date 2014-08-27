@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["denz@twiket.com"]
   spec.summary       = %q{Cloud provisoner tool}
   spec.description   = %q{Hazetug uses fog cloud library and he}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/dennybaa/hazetug"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
