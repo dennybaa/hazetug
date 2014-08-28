@@ -23,11 +23,11 @@ class Hazetug
       @task[key]
     end
 
-    def hosts_to_bootstrap(env={}, &block)
+    def hosts_to_bootstrap(cmd_vars={}, &block)
       return if block.nil?
       base_conf = Mash.new(task)
       hosts = base_conf.delete(:bootstrap)
-      base_conf = Chef::Mixin::DeepMerge.merge(base_conf, env)
+      base_conf = Chef::Mixin::DeepMerge.merge(base_conf, cmd_vars)
       hosts.each do |conf|
         merged = Chef::Mixin::DeepMerge.merge(base_conf, conf)
         block.call(merged)

@@ -43,30 +43,35 @@ class Hazetug
 
       def bootstrap_list(&block)
         return if block.nil?
-        task.hosts_to_bootstrap(env_split) do |conf|
-          num = conf[:number] || data[:opts][:number].to_i || 1
+        task.hosts_to_bootstrap(command_variables) do |conf|
+
           if convert_rand_name(conf[:name]) == conf[:name] && num > 1
             ui.fatal "Can't bootstrap several hosts with the same name"
             raise ArgumentError, "%rand(x)% expected"
           end
+
+          num = conf[:number] || data[:opts][:number].to_i || 1
           (1..num).each do
             newconf = conf.dup
             newconf[:name] = convert_rand_name(conf[:name])
+
             haze = Hazetug::Haze[data[:compute_name]].new(newconf)
-            # Ensure a dynamic password loaded back from haze
+            
             if haze.config[:ssh_password]
+              # Ensure a dynamic password loaded back from haze
               newconf[:ssh_password] = haze.config[:ssh_password]
             end
+
             tug  = Hazetug::Tug[data[:tug_name]].new(newconf, haze)
             block.call(haze, tug)
           end
         end
       end
 
-      def env_split
-        @env_split ||= begin
+      def command_variables
+        @command_variables ||= begin
           env = {}
-          arr = data[:opts][:env]
+          arr = data[:opts][:variables]
           if arr
             arr.each do |eq|
               k, v = eq.split('=')

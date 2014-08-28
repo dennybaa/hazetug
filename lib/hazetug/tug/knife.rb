@@ -70,12 +70,10 @@ class Hazetug
           template = options[:opts][:bootstrap] || 'bootstrap.erb'
           validation = config[:chef_validation_key] || 'validation.pem'
 
-          notfound = [template_file, validation].select do |f|
-            not File.exist?(File.expand_path(f))
-          end
-
+          files = [template, validation].map {|f| File.expand_path(f)}
+          notfound = files.select {|f| !File.exist?(f)}
           notfound.empty? or 
-            raise Hazetug::Exception, "Files not found: #{notfound.join(', ')}"
+            raise Hazetug::Exception, "File(s) not found: #{notfound.join(', ')}"
 
           opts = {}
           opts[:validation_key] = File.expand_path(validation)
