@@ -48,7 +48,9 @@ class Hazetug
         end
         kb.name_args = [haze.server.ssh_ip_address]
         kb.run
-      ensure
+      rescue Hazetug::Exception => e
+        ui.error(e.message); 1
+      ensure  
         @kb and @kb.ui.stdout.close
       end
 
@@ -65,10 +67,19 @@ class Hazetug
 
       def bootstrap_options
         @bootstrap_options ||= begin
-          template = options[:opts][:bootstrap]
+          template = options[:opts][:bootstrap] || 'bootstrap.erb'
+          validation = config[:chef_validation_key] || 'validation.pem'
+
+          notfound = [template_file, validation].select do |f|
+            not File.exist?(File.expand_path(f))
+          end
+
+          notfound.empty? or 
+            raise Hazetug::Exception, "Files not found: #{notfound.join(', ')}"
+
           opts = {}
-          opts[:validation_key] = File.expand_path(config[:chef_validation_key] || 'validation.pem')
-          opts[:template_file]  = File.expand_path(template || 'bootstrap.erb')
+          opts[:validation_key] = File.expand_path(validation)
+          opts[:template_file]  = File.expand_path(template)
           opts[:ssh_user] = config[:ssh_user] || 'root'
           opts[:ssh_password] = config[:ssh_password]
           opts[:environment]  =  config[:chef_environment]
