@@ -19,7 +19,8 @@ class Hazetug
       def create_server_args
         latest = /^Latest #{config[:bits]} bit/
         {
-          :name => config[:name],
+          # linode node name can't contain dots
+          :name => config[:name].gsub(/./,'-'),
           :data_center => lookup(:location),
           :flavor => lookup(:flavor),
           :image  => lookup(:image),
