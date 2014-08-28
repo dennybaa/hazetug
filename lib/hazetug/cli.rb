@@ -15,6 +15,7 @@ class Hazetug
     def define_cli
       sort_help :manually
       switch [:v, :verbose]
+      program_desc 'Provisions and bootstraps hosts in the cloud'
 
       {
         digital_ocean: 'DigitalOcean compute',

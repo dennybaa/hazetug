@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require 'hazetug'
+
+Hazetug::CLI.new.run(ARGV)
