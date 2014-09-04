@@ -217,7 +217,6 @@ bootstrap:
       }
     }
 ```
-```
 
 Merged *attributes* with the *run_list* form the input data for running **chef-solo** they are available inside bootstrap.erb as `hazetug[:attributes_json]`. Berksfile can be set specifically  in the bootstrap task list or if it's not set local *Berksfile* is tried by default.
 
