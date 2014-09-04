@@ -20,7 +20,7 @@ class Hazetug
         latest = /^Latest #{config[:bits]} bit/
         {
           # linode node name can't contain dots
-          :name => config[:name].gsub(/./,'-'),
+          :name => config[:name].gsub(/\./,'-'),
           :data_center => lookup(:location),
           :flavor => lookup(:flavor),
           :image  => lookup(:image),

@@ -3,7 +3,8 @@
 Cloud provisioner and bootstrapper for DigitalOcean and Linode.
 Hazetug uses [fog cloud library](http://fog.io) to be able to easily append other cloud computes and *tugs* (bootstraps) hosts using:
 
-* Knife bootstrap.
+* Knife bootstrap for chef-client.
+* Knife bootstrap for chef-solo.
 
 ## Options
 
@@ -64,8 +65,6 @@ Hazetug uses [fog cloud library](http://fog.io) to be able to easily append othe
 
 ## Knife tug
 
-### Knife tug bootstrap options
-
 <table>
     <tr>
         <td><b>Option</b></td>
@@ -88,6 +87,27 @@ Hazetug uses [fog cloud library](http://fog.io) to be able to easily append othe
         <td></td>
     </tr>
 </table>
+
+## Solo tug
+
+<table>
+    <tr>
+        <td><b>Option</b></td>
+        <td><b>Description</b></td>
+        <td><b>Default value</b></td>
+    </tr>
+    <tr>
+        <td><b><i>attributes_json</i></b></td>
+        <td>Hash of attributes prepared for chef-solo run. (It's merged with the run_list).</td>
+        <td><i>{}</i><td>
+    </tr>
+    <tr>
+        <td><b><i>berksfile</i></b></td>
+        <td>Path to Berksfile.</td>
+        <td></td>
+    </tr>
+</table>
+
 
 ## Installation
 
@@ -151,7 +171,7 @@ All variables are merged using this 3-level priority.
 
 ### Bootstrap using knife
 
-Help for linode compute is given bellow:
+Help for the linode compute is given bellow:
 
 ```
 NAME
@@ -168,6 +188,40 @@ COMMAND OPTIONS
 ```
 
 All variables are passed to the bootstrap template and are available using the hazetug hash like - `hazetug[:variable_name]`. Amongst variables described here in the options sections, hazetug also passes useful variables such as ***compute_name***, ***public_ip_address***, ***private_ip_address*** if those are available.
+
+#### Client and Solo modes
+
+It's possible to use *chef-client* or *chef-solo* to bootstrap a node. The **solo** mode is almost identical with the **client** mode, but with the only difference that it uses **berkshelf** to assist during the bootstrap process. Cookbooks are packaged and uploaded to the remote node and can be used by chef
+
+You can initiate bootstrap in the solo mode, like the following:
+<pre>
+hazetug digitalocean bootstrap solo -b bootstrap.erb solo-task.yaml
+</pre>
+
+Solo bootstrap also uses bootstrap.erb, but there's no need to start client or use any data like **validation_key** or **start_chef** helper.
+
+When defining a task, there additional options **berksfile** and **attributes**
+
+```yaml
+...
+...
+bootstrap:
+  - name: solo-box
+    location: london
+    flavor:   1gb
+    image:    ubuntu-14.04-x64
+    run_list: ["role[api]"]
+    attributes: {
+      "mycookbook": {
+        "settings": {}
+      }
+    }
+```
+```
+
+Merged *attributes* with the *run_list* form the input data for running **chef-solo** they are available inside bootstrap.erb as `hazetug[:attributes_json]`. Berksfile can be set specifically  in the bootstrap task list or if it's not set local *Berksfile* is tried by default.
+
+Another important option which is also available in the *bootstrap.erb* file is `hazetug[:cookbooks_path]` which is path to an archive of cookbooks packaged by Berkshelf.
 
 #### Examples
 

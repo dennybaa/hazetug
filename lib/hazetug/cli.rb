@@ -29,40 +29,45 @@ class Hazetug
           compute_cmd.desc 'Provisions and bootstraps server'
           compute_cmd.command :bootstrap do |op|
 
-            op.desc 'Bootstraps server using Knife'
-            op.arg_name 'task.yaml'
-            op.command :knife do |tug|
-              tug.arg_name nil
+            op.flag [:v, :variables], :must_match => Array,
+              :desc => 'Set variable or comma-seperated list of variables (var1_1=hello)'
 
-              tug.flag [:v, :variables], :must_match => Array,
-                :desc => 'Set variable or comma-seperated list of variables (var1_1=hello)'
+            op.flag [:n, :number], :default_value => 1,
+              :desc => 'Set number of created nodes, value from yaml is honored'
 
-              tug.flag [:n, :number], :default_value => 1,
-                :desc => 'Set number of created nodes, value from yaml is honored'
+            op.flag [:c, :concurrency], :default_value => 1,
+              :desc => 'Set concurrency value, i.e. number of hosts bootstraped simultaneously'
 
-              tug.flag [:c, :concurrency], :default_value => 1,
-                :desc => 'Set concurrency value, i.e. number of hosts bootstraped simultaneously'
+            op.flag [:b, :bootstrap], :default_value => 'bootstrap.erb',
+              :desc => "Set path to knife bootstrap.erb file"
 
-              tug.flag [:b, :bootstrap], :default_value => 'bootstrap.erb',
-                :desc => 'Set path to knife bootstrap.erb file'
+            [:knife, :solo].each do |tug_cmd|
+              mode = "#{tug_cmd == :knife ? 'client' : 'solo'}"
 
-              tug.action do |gopts, opts, args|
 
-                if args.empty?
-                  commands[:help].execute({},{},tug.name_for_help)
-                  exit 0
+              op.desc "Bootstraps server using Knife in #{mode} mode"
+              op.arg_name '<task.yaml>'
+              op.command tug_cmd do |tug|
+              
+                tug.action do |gopts, opts, args|
+
+                  if args.empty?
+                    commands[:help].execute({},{},tug.name_for_help)
+                    exit 0
+                  end
+
+                  act = CLI::Action[:bootstrap].new
+                  act.pass(
+                    tug_name: tug_cmd,
+                    compute_name: compute,
+                    cli:   tug,
+                    gopts: gopts,
+                    opts:  opts,
+                    args:  args
+                  ).execute
                 end
-
-                act = CLI::Action[:bootstrap].new
-                act.pass(
-                  tug_name: :knife,
-                  compute_name: compute,
-                  cli:   tug,
-                  gopts: gopts,
-                  opts:  opts,
-                  args:  args
-                ).execute
               end
+
             end
 
           end

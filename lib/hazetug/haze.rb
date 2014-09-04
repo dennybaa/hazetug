@@ -16,7 +16,7 @@ class Hazetug
       @compute = Hazetug::Compute.const_get(compute_name).new
       @config  = configure(config)
       @server  = nil
-      @sshable = false
+      @ready   = false
     end
 
     def provision
@@ -26,6 +26,10 @@ class Hazetug
       ui.error "[#{compute_name}] #{$!.inspect}"
       ui.msg   $@
       exit(1)
+    end
+
+    def ready?
+      @ready
     end
 
     def configure(config)
@@ -65,6 +69,14 @@ class Hazetug
     end
 
     def private_ip_address
+    end
+
+    def config_for_tug
+      {
+        compute_name: compute_name.downcase,
+        public_ip_address: (public_ip_address || server.ssh_ip_address rescue nil),
+        private_ip_address: private_ip_address
+      }
     end
 
     protected

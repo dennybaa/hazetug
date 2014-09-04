@@ -3,7 +3,6 @@ require 'hazetug/cli/action'
 require 'hazetug/tug'
 require 'hazetug/task'
 
-
 class Hazetug
   class CLI
     class Bootstrap < Action
@@ -26,11 +25,15 @@ class Hazetug
 
       def provision_and_bootstrap(haze, tug, channel, waitgroup)
         haze.provision
-        tug.bootstrap({
-          args:  data[:args],
-          opts:  data[:opts],
-          gopts: data[:gopts]
-        })
+        if haze.ready?
+          tug.load_haze_config(haze.config_for_tug)
+
+          tug.bootstrap({
+            args:  data[:args],
+            opts:  data[:opts],
+            gopts: data[:gopts]
+          })
+        end
       rescue
         # Exeception will be lost, since we run inside goproc,
         # ie. as soon as waitgroup is empty all process exit.
@@ -62,7 +65,7 @@ class Hazetug
               newconf[:ssh_password] = haze.config[:ssh_password]
             end
 
-            tug  = Hazetug::Tug[data[:tug_name]].new(newconf, haze)
+            tug  = Hazetug::Tug[data[:tug_name]].new(newconf)
             block.call(haze, tug)
           end
         end

@@ -7,9 +7,9 @@ Gem::Specification.new do |spec|
   spec.name          = "hazetug"
   spec.version       = Hazetug::VERSION
   spec.authors       = ["Denis Barishev"]
-  spec.email         = ["denz@twiket.com"]
+  spec.email         = ["dennybaa@gmail.com"]
   spec.summary       = %q{Cloud provisoner tool}
-  spec.description   = %q{Hazetug uses fog cloud library and he}
+  spec.description   = %q{Provisions and bootstraps nodes using knife}
   spec.homepage      = "https://github.com/dennybaa/hazetug"
   spec.license       = "MIT"
 
@@ -19,10 +19,11 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_development_dependency "bundler", "~> 1.5"
-  spec.add_development_dependency "rake"
-  spec.add_dependency "psych"
-  spec.add_dependency "fog"
-  spec.add_dependency "chef", ">= 11.10.0"
-  spec.add_dependency "gli"
-  spec.add_dependency "agent"
+  spec.add_development_dependency "rake", "~> 0"
+  spec.add_dependency "psych", "~> 0"
+  spec.add_dependency "fog", "~> 0"
+  spec.add_dependency "chef", "~> 11.0"
+  spec.add_dependency "gli",  "~> 2.0"
+  spec.add_dependency "agent", "~> 0"
+  spec.add_dependency "berkshelf", "~> 3.0"
 end

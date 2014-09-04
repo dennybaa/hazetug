@@ -1,0 +1,82 @@
+<% require 'json' -%>
+bash -c '
+
+mkdir -p /etc/chef
+
+cat > /etc/chef/validation.pem <<'EOP'
+<%= validation_key %>
+EOP
+
+chmod 0600 /etc/chef/validation.pem
+
+cat > /etc/chef/client.rb <<'EOP'
+<%= config_content %>
+EOP
+
+cat > /etc/chef/first-boot.json <<'EOP'
+{
+  "run_list": <%= (["role[bootstrap]"] + (hazetug[:bootstrap_list] || [])).to_json %>,
+  "bootstrap":  {
+    "set_run_list": <%= (hazetug[:run_list] || []).to_json %>,
+    "set_environment": "<%= hazetug[:chef_environment] %>"
+  }
+}
+EOP
+
+# --------------- Update ubuntu and Install packages
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update && apt-get upgrade -yq
+apt-get clean
+apt-get autoremove -yq
+
+apt-get -yq install curl build-essential
+
+
+# --------------- Set hostname
+
+HOSTNAME="<%= hazetug[:name] %>"
+echo "${HOSTNAME}" > /etc/hostname
+ip=`/sbin/ifconfig eth0   | grep "\<inet\>"  |  cut -d ":" -f2 | cut -d " " -f1`
+echo -e "\n# our own entry\n${ip} ${HOSTNAME} ${HOSTNAME%%.*}" >> /etc/hosts
+cp /etc/hosts /tmp/hosts.orig
+cat /tmp/hosts.orig | sed "s/127.0.0.1.*/127.0.0.1 localhost localhost.localdomain/" > /etc/hosts
+rm /tmp/hosts.orig
+hostname -F /etc/hostname
+
+# --------------- Set private network on Linode
+
+if [ "<%= hazetug[:compute_name] %>" = "linode" ]; then
+
+cat >> /etc/network/interfaces <<'EOP'
+
+auto eth0:0
+iface eth0:0 inet static
+  address <%= hazetug[:private_ip_address] %>
+  netmask 255.255.128.0
+EOP
+ifup eth0:0
+
+fi
+
+
+# --------------- Install Chef
+
+curl -L https://get.rvm.io | bash -s <%= hazetug[:rvm_version] || 'stable' %>
+source /etc/profile.d/rvm.sh
+
+rvm install <%= hazetug[:ruby_version] || "ruby-2.1.2" %> --autolibs=3
+rvm use <%= hazetug[:ruby_version] || "ruby-2.1.2" %> --default
+
+cat >/tmp/chef_gemfile<<EOF
+source "http://rubygems.org"
+gem "chef", "<%= hazetug[:chef_version] || "11.14.6" %>"
+EOF
+ 
+bundle install --gemfile /tmp/chef_gemfile
+rm /tmp/chef_gemfile
+
+# --------------- Start Chef (bootstrap run)
+
+echo "<%= start_chef %>"
+<%= start_chef %>'

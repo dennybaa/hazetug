@@ -15,11 +15,12 @@ class Hazetug
         ssh_options[:password] = ssh_opts[:ssh_password]
         ssh_options[:paranoid] = ssh_opts[:host_key_verify] || false
         ssh_options[:keys] = ssh_opts[:ssh_keys] || Hazetug.ssh_keys(compute_name)
-        server.username = ssh_opts[:ssh_user]
+        server.username = ssh_opts[:ssh_user] || 'root'
         server.ssh_port = ssh_opts[:ssh_port]
         server.ssh_options = ssh_options
         ui.info "[#{compute_name}] waiting for active ssh on #{server.ssh_ip_address}"
         server.wait_for(30) { sshable? }
+        @ready = true
       rescue Fog::Errors::TimeoutError
         ui.error "[#{compute_name}] ssh failed to #{config[:name]}, ip: #{server.ssh_ip_address}"
       end
