@@ -19,11 +19,11 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_development_dependency "bundler", "~> 1.5"
-  spec.add_development_dependency "rake", "~> 0"
-  spec.add_dependency "psych", "~> 0"
-  spec.add_dependency "fog", "~> 0"
+  spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_dependency "psych", "~> 2.0"
+  spec.add_dependency "fog", "~> 1.0"
   spec.add_dependency "chef", "~> 11.0"
   spec.add_dependency "gli",  "~> 2.0"
-  spec.add_dependency "agent", "~> 0"
+  spec.add_dependency "agent", "~> 0.0"
   spec.add_dependency "berkshelf", "~> 3.0"
 end
