@@ -55,6 +55,7 @@ class Hazetug
           :ssh_password,
           :host_key_verify
         ]
+        @chef_option_list = [ :environment ]
       end
 
       # Bootstraps the remote server using knife bootstrap.
@@ -76,6 +77,10 @@ class Hazetug
 
         @bootstrap_option_list.each do |opt|
           knife.config[opt] = bootstrap_options[opt]
+        end
+
+        @chef_option_list.each do |opt|
+          Chef::Config[opt] = bootstrap_options[opt]
         end
 
         # Check ssh identity

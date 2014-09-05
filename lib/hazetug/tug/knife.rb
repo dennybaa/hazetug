@@ -8,18 +8,13 @@ class Hazetug
 
       def initialize(config={}, haze=nil)
         super
-        @chef_option_list = [
-          :environment,
-          :chef_server_url,
+        [ :chef_server_url,
           :validation_key
-        ]
+        ].inject(@chef_option_list, :<<)
       end
 
       def bootstrap_config
         super
-        @chef_option_list.each do |opt|
-          Chef::Config[opt] = bootstrap_options[opt]
-        end
         check_bootstrap_files! :validation_key, :template_file
       end
 

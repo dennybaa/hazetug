@@ -4,20 +4,16 @@ class Hazetug
 
       def provision_server
         ui.info "[#{compute_name}] creating server #{config[:name]}"
-        @server = compute.servers.create(server_args)
+        self.server = compute.servers.create(server_args)
         server.wait_for { ready? }
         ui.info "[#{compute_name}] server #{config[:name]} created, ip: #{server.ssh_ip_address}"
       end
 
       def wait_for_ssh
-        ssh_options = {}
-        ssh_opts = Hazetug::Tug.ssh_options_from(config)
-        ssh_options[:password] = ssh_opts[:ssh_password]
-        ssh_options[:paranoid] = ssh_opts[:host_key_verify] || false
-        ssh_options[:keys] = ssh_opts[:ssh_keys] || Hazetug.ssh_keys(compute_name)
-        server.username = ssh_opts[:ssh_user] || 'root'
-        server.ssh_port = ssh_opts[:ssh_port]
-        server.ssh_options = ssh_options
+        server.username = config[:ssh_user] || 'root'
+        server.ssh_port = config[:ssh_port]
+        server.ssh_options = net_ssh_options
+
         ui.info "[#{compute_name}] waiting for active ssh on #{server.ssh_ip_address}"
         server.wait_for(30) { sshable? }
         @ready = true

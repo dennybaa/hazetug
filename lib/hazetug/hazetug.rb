@@ -20,12 +20,5 @@ class Hazetug
         klass.name.split('::').last
       end
     end
-
-    def ssh_keys(compute_name=nil)
-      ssh_attr = []
-      ssh_attr << "#{compute_name.downcase}_ssh_keys" if compute_name
-      ssh_attr << "ssh_keys"
-      Hazetug::Config[ssh_attr.find {|a| Hazetug::Config[a]}]
-    end
   end
 end

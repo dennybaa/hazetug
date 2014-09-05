@@ -27,7 +27,7 @@ class Hazetug
       end
 
       def bootstrap_cleanup
-        ssh = Fog::SSH.new(config[:public_ip_address], ssh_username, ssh_options)
+        ssh = Fog::SSH.new(config[:public_ip_address], ssh_username, net_ssh_options)
         ssh.run("test -f #{@upload_dest} && rm #{@upload_dest}")
       end
 
@@ -46,7 +46,7 @@ class Hazetug
 
       def upload_berks_package
         berks_package do |path|
-          scp = Fog::SCP.new(config[:public_ip_address], ssh_username, ssh_options)
+          scp = Fog::SCP.new(config[:public_ip_address], ssh_username, net_ssh_options)
           scp.upload(path, @upload_dest)
         end
       end
@@ -64,20 +64,6 @@ class Hazetug
           hash = config[:attributes] || {}
           hash[:run_list] = config[:run_list] || []
           JSON.pretty_generate(hash)
-        end
-      end
-
-      private
-
-      def ssh_options
-        @ssh_options ||= begin
-          ssh_options = {}
-          ssh_opts = Hazetug::Tug.ssh_options_from(config)
-          ssh_options[:password] = ssh_opts[:ssh_password]
-          ssh_options[:paranoid] = ssh_opts[:host_key_verify] || false
-          ssh_options[:keys] = ssh_opts[:ssh_keys] || Hazetug.ssh_keys(config[:compute_name])
-          ssh_options[:port] = ssh_opts[:ssh_port]
-          ssh_options
         end
       end
 

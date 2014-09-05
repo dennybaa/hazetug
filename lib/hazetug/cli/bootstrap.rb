@@ -25,8 +25,9 @@ class Hazetug
 
       def provision_and_bootstrap(haze, tug, channel, waitgroup)
         haze.provision
+
         if haze.ready?
-          tug.load_haze_config(haze.config_for_tug)
+          haze.update_access_settings tug.config
 
           tug.bootstrap({
             args:  data[:args],
@@ -36,7 +37,7 @@ class Hazetug
         end
       rescue
         # Exeception will be lost, since we run inside goproc,
-        # ie. as soon as waitgroup is empty all process exit.
+        # ie. as soon as waitgroup is empty and all processes died.
         puts $!.inspect
         puts $@
       ensure
