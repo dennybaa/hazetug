@@ -97,7 +97,7 @@ Hazetug uses [fog cloud library](http://fog.io) to be able to easily append othe
         <td><b>Default value</b></td>
     </tr>
     <tr>
-        <td><b><i>attributes_json</i></b></td>
+        <td><b><i>attributes</i></b></td>
         <td>Hash of attributes prepared for chef-solo run. (It's merged with the run_list).</td>
         <td><i>{}</i><td>
     </tr>
