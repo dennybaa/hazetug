@@ -4,7 +4,7 @@ Cloud provisioner and bootstraper which simplifies node creation and configurati
 
 Provisioning is handled by *haze* core which is based on [fog cloud library](http://fog.io). A plenty of different cloud computes available in fog (*AWS*, *Rackspace*, *BareMetalCloud* and many more) helps to extend hazetug with the new *"hazes"* quite simple.
 
-Bootstrapping is done by *" tugs"*, hazetug supports only a few tugs for just Chef now.
+Bootstrapping is done by *"tugs"*, hazetug supports only a few tugs just for Chef now.
 
 ## Supported cloud computes
 
