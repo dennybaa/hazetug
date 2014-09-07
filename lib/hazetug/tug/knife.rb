@@ -6,7 +6,7 @@ class Hazetug
   class Tug
     class Knife < KnifeBase
 
-      def initialize(config={}, haze=nil)
+      def initialize(config={})
         super
         [ :chef_server_url,
           :validation_key
