@@ -48,13 +48,13 @@ class Hazetug
       def bootstrap_list(&block)
         return if block.nil?
         task.hosts_to_bootstrap(command_variables) do |conf|
+          num = conf[:number] || data[:opts][:number].to_i || 1
 
           if convert_rand_name(conf[:name]) == conf[:name] && num > 1
             ui.fatal "Can't bootstrap several hosts with the same name"
             raise ArgumentError, "%rand(x)% expected"
           end
 
-          num = conf[:number] || data[:opts][:number].to_i || 1
           (1..num).each do
             newconf = conf.dup
             newconf[:name] = convert_rand_name(conf[:name])
