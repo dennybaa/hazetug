@@ -2,6 +2,7 @@ require 'erubis'
 require 'chef/knife/ssh'
 require 'chef/knife/bootstrap'
 require 'chef/knife/core/bootstrap_context'
+require 'chef/mixin/command'
 require 'hazetug/tug'
 
 # Extend knife bootstrap context with our data.
