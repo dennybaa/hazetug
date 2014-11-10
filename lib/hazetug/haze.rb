@@ -1,103 +1,208 @@
-require 'hazetug/config'
-require 'hazetug/compute'
+require 'forwardable'
+require 'fog/core'
+
+# Previously treated as "core"
+# data exchange specific (to be extracted and used on a per provider basis)
+require 'fog/xml'
+require 'fog/json'
+require 'fog/core/parser'
+
+# deprecation wrappers (XML wrapped version)
+require 'fog/core/deprecated/connection'
+require 'fog/core/deprecated_connection_accessors'
+
+require 'hashie/mash'
+require 'hazetug/logger'
 require 'hazetug/ui'
-require 'hazetug/tug'
-require 'hazetug/net_ssh'
-require 'chef/mash'
+require 'hazetug/haze/dsl'
 
 class Hazetug
   class Haze
-    include Hazetug::UI::Mixin
-    include Hazetug::NetSSH::Mixin
+    extend Forwardable
+    include Hazetug::Logger
+    include Hazetug::Haze::DSL
 
-    attr_reader :config, :compute_name
+    def_delegators :'self.class', :nodespec_attrs, :compute_name, :compute_cache
+    def_delegator  :'self.class', :setup_fog_config, :has_fog_config?
 
-    RE_BITS  = /-?x(32)$|-?x(64)$|(32)bit|(64)bit/i
-
-    def initialize(config={})
-      @compute_name = Hazetug.leaf_klass_name(self.class)
-      @compute = Hazetug::Compute.const_get(compute_name).new
-      @config  = configure(config)
-      @server  = nil
-      @ready   = false
-    end
-
-    def provision
-      provision_server
-      wait_for_ssh
-    rescue Fog::Errors::Error
-      # Catch fog errors, don't abort further execution
-      ui.error "[#{compute_name}] #{$!.inspect}"
-    rescue
-      # For unknown exceptions, notify and exit
-      ui.error "[#{compute_name}] #{$!.inspect}"
-      ui.msg $@
-      exit(1)
-    end
-
-    def ready?
-      @ready
-    end
-
-    def public_ip_address
-    end
-
-    def private_ip_address
-    end
-
-    # Update hash with haze access settings only if any available
-    def update_access_settings(hash)
-      {
-        compute_name: compute_name.downcase,
-        public_ip_address: (public_ip_address || 
-            (server and server.ssh_ip_address)),
-        private_ip_address: private_ip_address
-      }.inject(hash) do |hsh, (k, v)|
-        hsh[k] = v if v
-        hsh
-      end
-    end
+    attr_reader :node_spec
 
     class << self
-      def requires(*args)
-        args.empty? ? @requires : @requires = args.flatten.dup
+      include Logger
+
+      def computes; @@computes ||= {}; end
+      def compute_cache; @@compute_cache ||= {}; end
+
+      # Retrieve class of a specific compute
+      def compute(name)
+        require "hazetug/haze/#{name}"
+        require "fog/#{name}"
+        setup_fog_config
+        computes[name].new
+      rescue LoadError
+        log.error "Unable to load haze compute `#{name}'"
+        raise
       end
 
-      def defaults(hash=nil)
-        hash.nil? ? @defaults : @defaults = hash
+      # Store symbol to class mapping
+      def compute_name(name=nil)
+        if name
+          @compute_name    = name
+          computes[name] ||= self
+        else
+          @compute_name
+        end
       end
 
-      def [](haze_name)
-        klass = Hazetug.camel_case_name(haze_name)
-        Hazetug::Haze.const_get(klass)
+      # Node specification attributes (these are defaults), but might be extended
+      # in a specific compute.
+      def nodespec_attrs
+        @nodespec_attrs ||= [:name, :location, :flavor, :image]
+      end
+
+      # Setup fog configuration if the file exists
+      def setup_fog_config
+        @@has_fog_config ||= begin
+          # implement choosing
+          path = File.join(ENV['HOME'], '.fog')
+          unless File.exist? path
+            false
+          else
+            Fog.credentials_path = path
+            true
+          end
+        end
+      end
+
+      # Dynamically create methods and do setup using DSL provided information
+      def compile!
+        nodespec_attrs.each do |meth|
+          # Create fog collection method invocation
+          define_method("#{meth}s") { fog.send("#{nodespec_map[meth] || meth}s") }
+
+          # Default node spec string returns object name (!?)
+          if nodespec_string[meth].nil?
+            nodespec_string[meth] = ->(o) { o.name }
+          end
+        end
+      end
+    end
+
+    def capital_name; @capital_name ||= Hazetug.leaf_klass_name(self.class); end
+
+    def provision
+      raise NotImplementedError, "#provision method must be implemented"
+    end
+
+    def destroy
+      raise NotImplementedError, "#destroy method must be implemented"
+    end
+
+    def perform_with_message(method_symbol, doing_msg, finished_msg=nil)
+      finished_msg ||= doing_msg
+      cl_name = ui.colored :node_name, raw_node_spec[:name]
+      cl_compute = ui.colored :compute_name, capital_name
+
+      ui.say "#{doing_msg.capitalize} node #{cl_name} in #{cl_compute}."
+      self.send(method_symbol)
+      ui.say ui.colored(:success, "Successfully #{finished_msg.downcase}") + " node #{cl_name}."
+    rescue
+      ui.say ui.colored(:error, "Failed #{doing_msg}") + " node #{cl_name}."
+    end
+
+    # Setup ui and its colors
+    def ui
+      @ui ||= begin
+        _ui = Ui::Color.new
+        _ui.color_cache.merge!({
+          node_name: [:bold, :blue],
+          node_attr_value: [:green],
+          compute_name: [:bold, :blue],
+          success: [:bold, :green]
+        })
+        _ui
+      end
+    end
+
+    # Lookup fog cloud for attribute matching id or regex
+    def lookup(attribute, arg)
+      case arg
+      when Fixnum # use ID
+        send("#{attribute}s").find {|o| o.identity == arg}
+      when String # use regex
+        send("#{attribute}s").select do |o|
+          nodespec_string[attribute].(o) =~ /^#{arg}/i
+        end
+      end
+    end
+
+    # List attributes from a list
+    def nodespec_list(attribute, list)
+      maxlen = list.map { |o| nodespec_string[attribute].(o) }.max.size
+      list.map do |o|
+        "%-*s,\tid: %d" %  [ maxlen, nodespec_string[attribute].(o), o.identity ]
       end
     end
 
     protected
-    attr_accessor :server
-    attr_reader   :compute
 
-    def provision_server
-      ui.error "#{compute_name} Provisioning is not impemented"
-    end
+    # Build up fog nodespec which is parsed and looked up in a cloud compute
+    # openstruct with all its attributes set for location, flavor and etc.
+    def build_node_spec
+      @node_spec ||= begin
+        cl_name = ui.colored :node_name, raw_node_spec[:name]
+        cl_compute = ui.colored :compute_name, capital_name
 
-    def wait_for_ssh
-      ui.error "#{compute_name} Waiting for shh is not impemented"
-    end
+        ui.say "Preparing for node #{cl_name} creation in #{cl_compute}..."
 
-    private
+        inhash = {name: raw_node_spec[:name]}
+        built = (nodespec_attrs - [:name]).inject(inhash) do |hash, spec_attr|
 
-    def configure(config)
-      input = config.keys.map(&:to_sym)
-      requires = self.class.requires
+          found = lookup(spec_attr, raw_node_spec[spec_attr])
+          cl_value = ui.colored :node_attr_value, raw_node_spec[spec_attr]
 
-      unless (norequired = requires.select {|r| not input.include?(r)}).empty?
-        ui.error "Required options missing: #{norequired.join(', ')}"
-        raise ArgumentError, "Haze options missing"
+          if found.empty?
+            ui.error "Couldn't find #{spec_attr} in #{cl_compute} for `#{cl_value}'"
+            exit 1
+          elsif found.size >= 2
+            ui.say "Multiple #{spec_attr}s found in #{cl_compute} for `#{cl_value}'"
+            ui.say "Choose one of the following #{spec_attr}s:"
+
+            choices = nodespec_list(spec_attr, found)
+            (1..found.size).each do |i|
+              ui.say "%2d) %s" % [ i, choices[i-1] ]
+            end
+            num = ui.ask('Select number: ', ->(ans){ans.to_i}) do |q|
+              q.in = (1..found.size)
+            end
+
+            hash[spec_attr] = found[num-1]
+          else
+            hash[spec_attr] = found.first
+          end
+          hash
+        end
+        OpenStruct.new(built)
       end
-
-      Mash.new(self.class.defaults.merge(config))
     end
+
+    # Fog compute instance (cached)
+    def fog
+      id = { compute: compute_name, data: compute_spec }
+      compute_cache[id] or begin
+        api = case requires.empty?
+          when true
+            # rely on compute options that might be given in ~/.fog config
+            Fog::Compute[compute_name]
+          else
+            Fog::Compute.const_get(capital_name).new(compute_spec)
+          end
+        compute_cache[id] = fog_setup(api)
+      end
+    end
+
+    # Fog configuration handler, default passes fog instance as is.
+    def fog_setup(fog); fog; end
 
   end
 end

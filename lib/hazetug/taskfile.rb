@@ -2,11 +2,14 @@ require 'tilt'
 require 'tilt/erubis'
 require 'tempfile'
 require 'psych'
-require 'hazetug/ihash'
+require 'hashie/mash'
 require 'hazetug/render_context'
+require 'hazetug/logger'
 
 class Hazetug
   class Taskfile
+    include Logger
+
     ALWAYS_RENDER = [:provision]
 
     # Define section access methods
@@ -16,7 +19,7 @@ class Hazetug
 
     def initialize(path)
       @path = path
-      @context = Taskfile::RenderContext.new IHash[Psych.load(raw_data)]
+      @context = Taskfile::RenderContext.new Hashie::Mash[psych_load(raw_data)]
     end
 
     def cleanup
@@ -27,31 +30,43 @@ class Hazetug
 
     attr_reader :context
 
+    def psych_load(data)
+      Psych.load(data)
+    rescue Exception => ex
+      log.error "Can not parse file `#{@path}': " + ex.message
+      exit 1
+    end
+
     # Renders the taskfile and returns parsed YAML data
     def render_task(section=nil)
       section = section || :_none
-      render  = ->{ IHash[Psych.load(template.render(context.dup))] }
+      render  = ->{ Hashie::Mash[psych_load(template.render(context.dup))] }
 
       if ALWAYS_RENDER.include?(section)
         data = render.()
       else
         @rendered_data ||= render.()
-        data = @rendered_data
+        data = Hashie::Mash[@rendered_data] # always return a copy of the data hash
       end
       section == :_none ? data : data[section]
-    # to be rescued
+    rescue Exception => ex
+      log.error "Can not parse file `#{@path}': " + ex.message
+      exit 1
     end
 
     def raw_data
       IO.read(@path)
-    # to be rescued
+    rescue Psych::Exception => ex
+      log.error "Can not parse file `#{@path}': " + ex.message
+      exit 1
     end
-
 
     # Tilt erubis template
     def template
       @template ||= Tilt::ErubisTemplate.new(tempfile.path)
-    # to be rescued
+    rescue Exception => ex
+      log.error "Can not parse file `#{@path}': " + ex.message
+      exit 1
     end
 
     # The actual task file is converted from the origin

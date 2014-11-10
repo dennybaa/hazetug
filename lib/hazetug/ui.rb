@@ -1,75 +1,77 @@
+require 'thread'
+
 class Hazetug
-  class UI
-    module Mixin
-      def self.included(includer)
-        includer.class_exec do
-          define_method(:ui) {Hazetug::UI.instance}
+  module Ui
+    class Basic
+      @@mutex ||= Mutex.new
+
+      attr_reader :stdout, :stderr, :stdin
+
+      def initialize(stdout=nil, stderr=nil, stdin=nil)
+        @stdout, @stderr, @stdin = (stdout || STDOUT), (stderr || STDERR), (stdin || STDIN)
+      end
+
+      def ask(*args, &block)
+        @@mutex.synchronize { highline.ask(*args, &block) }
+      end
+
+      def say(statement)
+        @@mutex.synchronize { highline.say statement }
+      end
+
+      def message(message)
+        say message
+      end
+
+      def error(message)
+        @@mutex.synchronize { stdout.puts message }
+      end
+
+      private
+
+      def highline
+        @highline ||= begin
+          require 'highline'
+          HighLine.new(@stdin, @stdout)
         end
       end
     end
 
-    attr_reader :stdout
-    attr_reader :stderr
-    attr_reader :stdin
+    class Color < Basic
+      attr_reader :color_cache
 
-    def initialize(stdout, stderr, stdin)
-      @stdout, @stderr, @stdin = stdout, stderr, stdin
-    end
+      def initialize(stdout=nil, stderr=nil, stdin=nil)
+        super
+        @color_cache = {error: [:bold, :red]}
+      end
 
-    def highline
-      @highline ||= begin
-        require 'highline'
-        HighLine.new
+      def say(statement); super( color(statement, color_cache[:default]) ) ;end
+      def error(message); super( color(message, color_cache[:error]) ) ;end
+
+      def color(string, *colors)
+        color? ? highline.color(string, *colors) : string
+      end
+
+      def colored(key, message)
+        color(message.to_s, color_cache[key]) if color?
+      end
+
+      def color?
+        # make possible turn on/off
+        true
       end
     end
 
-    def msg(message)
-      begin
-        stdout.puts message
-      rescue Errno::EPIPE => e
-        raise e
-        exit 0
-      end
+    class Default < Color
+      def say(statement); super('     ' + statement) ;end
+      def error(message); super('     ' + message) ;end
     end
 
-    alias :info :msg
+    class Target < Color
+      attr_accessor :target
 
-    def err(message)
-      begin
-        stderr.puts message
-      rescue Errno::EPIPE => e
-        raise e
-        exit 0
-      end
+      def say(statement); super("===> #{@target}: " + statement) ;end
+      def error(message); super("===> #{@target}: " + message) ;end
     end
-
-    def warn(message)
-      err("#{color('WARNING:', :yellow, :bold)} #{message}")
-    end
-
-    def error(message)
-      err("#{color('ERROR:', :red, :bold)} #{message}")
-    end
-
-    def fatal(message)
-      err("#{color('FATAL:', :red, :bold)} #{message}")
-    end
-
-    def color(string, *colors)
-      if color?
-        highline.color(string, *colors)
-      else
-        string
-      end
-    end
-
-    def color?
-      stdout.tty?
-    end
-
-    def self.instance
-      @instance ||= Hazetug::UI.new(STDOUT, STDERR, STDIN)
-    end
-
   end
 end
