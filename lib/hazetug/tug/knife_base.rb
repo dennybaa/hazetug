@@ -140,7 +140,8 @@ class Hazetug
 
           opts[:validation_key] = File.expand_path(validation)
           opts[:template_file]  = File.expand_path(template)
-          opts[:environment]  =  config[:chef_environment]
+          opts[:environment]    = config[:chef_environment]
+          opts[:tags]           = config[:tags]
           opts[:host_key_verify] = config[:host_key_verify] || false
           opts[:chef_server_url] = config[:chef_server_url]
           opts

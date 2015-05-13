@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_dependency "psych", "~> 2.0"
   spec.add_dependency "fog", "~> 1.23"
-  spec.add_dependency "chef", ">= 11.10.0", "<= 11.16.0"
+  spec.add_dependency "chef", ">= 11.10.0", "<= 11.19.0"
   spec.add_dependency "gli",  "~> 2.12"
   spec.add_dependency "agent", "~> 0.9"
   spec.add_dependency "berkshelf", "~> 3.1"
